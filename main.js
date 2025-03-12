@@ -19,6 +19,13 @@ let soundsLoaded = false;
 let gameJustEnded = false;
 let leaderboardWithDifficulty = [];
 
+// Speech recognition variables
+let speechRec;
+let speechReady = false;
+let lastCommand = "";
+let commandRecognized = false;
+let commandFeedbackTimer = 0;
+
 let bgImage;
 let logoImage;
 let upheavalFont;
@@ -44,7 +51,7 @@ function preload() {
   handPose = ml5.handPose({ flipped: true });
 
   try {
-    bgImage = loadImage("assets/imgs/bg1.png");
+    bgImage = loadImage("assets/imgs/bg.png");
     logoImage = loadImage("assets/imgs/logo.png");
     backArrow = loadImage("assets/imgs/back_arrow.png");
     upheavalFont = loadFont("assets/font/upheavtt.ttf");
@@ -218,6 +225,9 @@ function setup() {
     updateSoundVolumes();
   }
 
+  // Initialize speech recognition
+  initSpeechRecognition();
+
   setTimeout(() => {
     assetsLoaded = true;
     gameState = "menu";
@@ -227,6 +237,72 @@ function setup() {
   }, 2000);
 
   basket = { x: width / 2, y: height - 60, w: 120, h: 60 };
+}
+
+function initSpeechRecognition() {
+  try {
+    speechRec = new p5.SpeechRec("en-US", gotSpeech);
+    speechRec.continuous = true;
+    speechRec.interimResults = true;
+    speechRec.start();
+    console.log("Reconhecimento de voz inicializado.");
+    speechReady = true;
+  } catch (e) {
+    console.error("Erro ao inicializar reconhecimento de voz:", e);
+    speechReady = false;
+  }
+}
+
+function gotSpeech() {
+  if (speechRec.resultValue) {
+    let command = speechRec.resultString.toLowerCase().trim();
+    // Add debug logging
+    console.log("Speech recognized:", command);
+    processVoiceCommand(command);
+  }
+}
+
+function processVoiceCommand(command) {
+  // Only process these specific commands
+  if (
+    command === "pause" ||
+    command === "unpause" ||
+    command === "play" ||
+    command === "quit"
+  ) {
+    console.log("Comando reconhecido:", command);
+    lastCommand = command;
+    commandRecognized = true;
+    commandFeedbackTimer = 60; // Display feedback for 60 frames (1 second)
+
+    // Handle commands based on game state
+    if (command === "pause" && gameState === "playing") {
+      gameState = "pauseMenu";
+      isPaused = true;
+      if (soundsLoaded) {
+        playSoundSafe(pauseSound);
+        if (gameMusic.isPlaying()) {
+          gameMusic.pause();
+        }
+      }
+    } else if (command === "unpause" && gameState === "pauseMenu") {
+      gameState = "playing";
+      isPaused = false;
+      playSoundSafe(pauseSound);
+      if (soundsLoaded && !gameMusic.isPlaying()) {
+        gameMusic.loop();
+      }
+    } else if (command === "quit" && gameState === "pauseMenu") {
+      playSoundSafe(buttonClickSound);
+      gameState = "menu";
+      isPaused = false;
+      resetGame();
+    } else if (command === "play" && gameState === "menu") {
+      playSoundSafe(buttonClickSound);
+      gameState = "playing";
+      resetGame();
+    }
+  }
 }
 
 function draw() {
@@ -310,6 +386,28 @@ function draw() {
       drawPauseMenuScreen();
       break;
   }
+
+  // Display voice command feedback if a command was recognized
+  if (commandRecognized && commandFeedbackTimer > 0) {
+    displayCommandFeedback();
+    commandFeedbackTimer--;
+    if (commandFeedbackTimer <= 0) {
+      commandRecognized = false;
+    }
+  }
+}
+
+function displayCommandFeedback() {
+  push();
+  fill(0, 200, 100, 200);
+  noStroke();
+  rect(width - 150, 10, 140, 40, 10);
+
+  fill(255);
+  textSize(18);
+  textAlign(CENTER, CENTER);
+  text("Voz: " + lastCommand, width - 80, 30);
+  pop();
 }
 
 function stopAllSounds() {
@@ -346,10 +444,10 @@ function drawMainMenu() {
   noTint();
 
   push();
-  image(logoImage, width / 12, height / 8);
+  image(logoImage, width / 12, height / 10);
   pop();
 
-  let buttonY = height * 0.43;
+  let buttonY = height * 0.4;
   let buttonSpacing = 70;
 
   drawButton("Jogar", width / 2, buttonY, () => {
@@ -372,6 +470,13 @@ function drawMainMenu() {
     playSoundSafe(buttonClickSound);
     gameState = "options";
   });
+
+  if (speechReady) {
+    textSize(16);
+    fill(255);
+    textAlign(CENTER, TOP);
+    text("Diga 'play' para começar o jogo", width / 2, height - 25);
+  }
 
   fill(180);
   textSize(14);
@@ -473,7 +578,7 @@ function drawInstructionsScreen() {
   ];
 
   for (let i = 0; i < instructions.length; i++) {
-    text(instructions[i], width / 2, 120 + i * 40);
+    text(instructions[i], width / 2, 155 + i * 40);
   }
 }
 
@@ -522,7 +627,7 @@ function drawObjectiveScreen() {
     "Tenta superar o teu próprio recorde",
   ];
 
-  let startY = 120;
+  let startY = 145;
   for (let i = 0; i < objectives.length; i++) {
     text(objectives[i], width / 2, startY + i * 35);
   }
@@ -999,6 +1104,7 @@ function playGame() {
 
   textSize(16);
   text("ESC para pausar", 10, height - 25);
+  text("Diga 'pause' para pausar", 10, height - 45);
 
   noStroke();
 }
@@ -1077,6 +1183,13 @@ function drawPauseMenuScreen() {
   textSize(40);
   textAlign(CENTER, CENTER);
   text("Jogo Pausado", width / 2, height / 3);
+
+  textSize(18);
+  text(
+    "Diga 'unpause' para continuar ou 'quit' para sair",
+    width / 2,
+    height / 3 + 50
+  );
 
   let buttonY = height * 0.6;
   let buttonSpacing = 80;
