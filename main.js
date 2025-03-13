@@ -69,8 +69,10 @@ function preload() {
     if (typeof p5.prototype.loadSound === "function") {
       bgMusic = loadSound(
         "assets/sound/bg.mp3",
-        () => console.log("Música de fundo carregada."),
-        (err) => console.error("Música de fundo não carregada:", err)
+        () =>
+          //console.log("Música de fundo carregada."),
+          (err) =>
+            console.error("Música de fundo não carregada:", err)
       );
       fruitDropSound = loadSound("assets/sound/fruitdrop.mp3");
       fruitGrabSound = loadSound("assets/sound/fruitgrab.mp3");
@@ -81,7 +83,7 @@ function preload() {
       gameOverSound = loadSound("assets/sound/gameover.mp3");
       gameWinSound = loadSound("assets/sound/win.mp3");
       soundsLoaded = true;
-      console.log("Ficheiros carregados.");
+      //console.log("Ficheiros carregados.");
     } else {
       console.warn("Libraria de som do p5 não carregada.");
       soundsLoaded = false;
@@ -241,11 +243,11 @@ function setup() {
 
 function initSpeechRecognition() {
   try {
-    speechRec = new p5.SpeechRec("en-US", gotSpeech);
+    speechRec = new p5.SpeechRec("pt-PT", gotSpeech);
     speechRec.continuous = true;
     speechRec.interimResults = true;
     speechRec.start();
-    console.log("Reconhecimento de voz inicializado.");
+    //console.log("Reconhecimento de voz inicializado.");
     speechReady = true;
   } catch (e) {
     console.error("Erro ao inicializar reconhecimento de voz:", e);
@@ -256,8 +258,6 @@ function initSpeechRecognition() {
 function gotSpeech() {
   if (speechRec.resultValue) {
     let command = speechRec.resultString.toLowerCase().trim();
-    // Add debug logging
-    console.log("Speech recognized:", command);
     processVoiceCommand(command);
   }
 }
@@ -265,18 +265,23 @@ function gotSpeech() {
 function processVoiceCommand(command) {
   // Only process these specific commands
   if (
-    command === "pause" ||
-    command === "unpause" ||
-    command === "play" ||
-    command === "quit"
+    command === "pausar" ||
+    command === "voltar" ||
+    command === "jogar" ||
+    command === "sair" ||
+    command === "instruções" ||
+    command === "objetivo" ||
+    command === "opções" ||
+    command === "sim" ||
+    command === "não" ||
+    command === "eliminar"
   ) {
-    console.log("Comando reconhecido:", command);
     lastCommand = command;
     commandRecognized = true;
-    commandFeedbackTimer = 60; // Display feedback for 60 frames (1 second)
+    commandFeedbackTimer = 60;
 
     // Handle commands based on game state
-    if (command === "pause" && gameState === "playing") {
+    if (command === "pausar" && gameState === "playing") {
       gameState = "pauseMenu";
       isPaused = true;
       if (soundsLoaded) {
@@ -285,22 +290,67 @@ function processVoiceCommand(command) {
           gameMusic.pause();
         }
       }
-    } else if (command === "unpause" && gameState === "pauseMenu") {
+    } else if (command === "voltar" && gameState === "pauseMenu") {
       gameState = "playing";
       isPaused = false;
       playSoundSafe(pauseSound);
       if (soundsLoaded && !gameMusic.isPlaying()) {
         gameMusic.loop();
       }
-    } else if (command === "quit" && gameState === "pauseMenu") {
+    } else if (command === "sair" && gameState === "pauseMenu") {
       playSoundSafe(buttonClickSound);
       gameState = "menu";
       isPaused = false;
       resetGame();
-    } else if (command === "play" && gameState === "menu") {
+    } else if (command === "jogar" && gameState === "menu") {
       playSoundSafe(buttonClickSound);
       gameState = "playing";
       resetGame();
+    } else if (
+      command === "voltar" &&
+      [
+        "instructions",
+        "objective",
+        "options",
+        "gameOver",
+        "gameWin",
+        "confirmClear",
+      ].includes(gameState)
+    ) {
+      playSoundSafe(buttonClickSound);
+      gameState = "menu";
+    } else if (command === "sim" && gameState === "confirmClear") {
+      playSoundSafe(buttonClickSound);
+      clearLeaderboard();
+      gameState = "menu";
+    } else if (command === "não" && gameState === "confirmClear") {
+      playSoundSafe(buttonClickSound);
+      gameState = "menu";
+    } else if (command === "instruções" && gameState === "menu") {
+      playSoundSafe(buttonClickSound);
+      gameState = "instructions";
+    } else if (command === "objetivo" && gameState === "menu") {
+      playSoundSafe(buttonClickSound);
+      gameState = "objective";
+    } else if (command === "opções" && gameState === "menu") {
+      playSoundSafe(buttonClickSound);
+      gameState = "options";
+    } else if (command === "eliminar" && gameState === "menu") {
+      playSoundSafe(buttonClickSound);
+      gameState = "confirmClear";
+    } else if (
+      (command === "sim" && gameState === "gameOver") ||
+      gameState === "gameWin"
+    ) {
+      playSoundSafe(buttonClickSound);
+      gameState = "playing";
+      resetGame();
+    } else if (
+      (command === "não" && gameState === "gameOver") ||
+      gameState === "gameWin"
+    ) {
+      playSoundSafe(buttonClickSound);
+      gameState = "menu";
     }
   }
 }
@@ -475,7 +525,7 @@ function drawMainMenu() {
     textSize(16);
     fill(255);
     textAlign(CENTER, TOP);
-    text("Diga 'play' para começar o jogo", width / 2, height - 25);
+    text("Diga 'jogar' para começar o jogo", width / 2, height - 25);
   }
 
   fill(180);
@@ -923,7 +973,7 @@ function drawConfirmClearScreen() {
 
 function clearLeaderboard() {
   localStorage.removeItem("leaderboardWithDiff");
-  console.log("Classificação limpa.");
+  //console.log("Classificação limpa.");
 }
 
 function displayLeaderboard() {
@@ -1104,7 +1154,7 @@ function playGame() {
 
   textSize(16);
   text("ESC para pausar", 10, height - 25);
-  text("Diga 'pause' para pausar", 10, height - 45);
+  text("Diga 'pausar' para pausar", 10, height - 45);
 
   noStroke();
 }
@@ -1186,7 +1236,7 @@ function drawPauseMenuScreen() {
 
   textSize(18);
   text(
-    "Diga 'unpause' para continuar ou 'quit' para sair",
+    "Diga 'voltar' para continuar ou 'sair' para sair",
     width / 2,
     height / 3 + 50
   );

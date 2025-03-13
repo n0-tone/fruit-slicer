@@ -1,6 +1,7 @@
 # Fruit Slicer 🍎
 
 A gesture-controlled fruit catching game built with p5.js and ml5.js where players use hand movements to grab falling fruits and place them in a basket. Test your reflexes and coordination in this engaging interactive experience!
+You can now also use your voice to switch between screens. Only works in portuguese.
 
 ## 📍 Website
 
