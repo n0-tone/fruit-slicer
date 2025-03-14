@@ -51,7 +51,7 @@ function preload() {
   handPose = ml5.handPose({ flipped: true });
 
   try {
-    bgImage = loadImage("assets/imgs/bg.png");
+    bgImage = loadImage("assets/imgs/bg.jpg");
     logoImage = loadImage("assets/imgs/logo.png");
     backArrow = loadImage("assets/imgs/back_arrow.png");
     upheavalFont = loadFont("assets/font/upheavtt.ttf");
@@ -89,7 +89,7 @@ function preload() {
       soundsLoaded = false;
     }
   } catch (e) {
-    console.error("Erro ao carregar assets:", e);
+    console.error("Erro ao carregar os assets:", e);
 
     soundsLoaded = false;
   }
@@ -165,7 +165,7 @@ function updateSoundVolumes() {
     if (gameWinSound && typeof gameWinSound.setVolume === "function")
       gameWinSound.setVolume(sfxVolume);
   } catch (e) {
-    console.error("Erro ao atualizar volumes:", e);
+    console.error("Erro ao atualizar o volume:", e);
   }
 }
 
@@ -184,7 +184,7 @@ function stopSoundSafe(sound) {
     try {
       sound.stop();
     } catch (e) {
-      console.error("Erro ao parar música:", e);
+      console.error("Erro ao parar a música:", e);
     }
   }
 }
@@ -205,7 +205,7 @@ function loopSoundSafe(sound) {
     try {
       sound.loop();
     } catch (e) {
-      console.error("Erro a dar loop a música:", e);
+      console.error("Erro ao dar loop á música:", e);
     }
   }
 }
@@ -250,7 +250,7 @@ function initSpeechRecognition() {
     //console.log("Reconhecimento de voz inicializado.");
     speechReady = true;
   } catch (e) {
-    console.error("Erro ao inicializar reconhecimento de voz:", e);
+    console.error("Erro ao inicializar o reconhecimento de voz:", e);
     speechReady = false;
   }
 }
@@ -525,7 +525,7 @@ function drawMainMenu() {
     textSize(16);
     fill(255);
     textAlign(CENTER, TOP);
-    text("Diga 'jogar' para começar o jogo", width / 2, height - 25);
+    text("Diz 'jogar' para começar o jogo", width / 2, height - 25);
   }
 
   fill(180);
@@ -624,7 +624,7 @@ function drawInstructionsScreen() {
     "3. Abre a mão sobre o cesto para soltar a fruta",
     "4. Tenta pegar no máximo de frutas possível",
     "5. Tens 2 minutos para jogar",
-    "6. Pressiona ESC para pausar o jogo",
+    "6. Pressiona ESC ou diz 'pausar' para pausar o jogo",
   ];
 
   for (let i = 0; i < instructions.length; i++) {
@@ -768,21 +768,21 @@ function drawOptionsScreen() {
 
   textSize(26);
   textAlign(CENTER, TOP);
-  text("Volume:", width / 2, 240);
+  text("Volume:", width / 2, 235);
 
   textSize(20);
   text("Música:", width / 2, 280);
 
   let sliderX = width / 2;
   let sliderWidth = 200;
-  drawSlider(sliderX, 320, sliderWidth, musicVolume, (value) => {
+  drawSlider(sliderX, 330, sliderWidth, musicVolume, (value) => {
     musicVolume = value;
     updateSoundVolumes();
   });
 
   text("Efeitos:", width / 2, 360);
 
-  drawSlider(sliderX, 400, sliderWidth, sfxVolume, (value) => {
+  drawSlider(sliderX, 410, sliderWidth, sfxVolume, (value) => {
     sfxVolume = value;
     updateSoundVolumes();
   });
@@ -862,11 +862,11 @@ function drawGameOverScreen() {
   fill(255, 100, 100);
   textSize(48);
   textAlign(CENTER, CENTER);
-  text("Perdeste!", width / 2, height / 4);
+  text("Perdeste!", width / 2, height / 7);
 
   fill(255);
   textSize(30);
-  text(`Pontuação: ${counter}/${quota}`, width / 2, height / 4 + 60);
+  text(`Pontuação: ${counter}/${quota}`, width / 2, height / 7 + 60);
 
   displayLeaderboard();
 
@@ -897,11 +897,11 @@ function drawGameWinScreen() {
   fill(100, 255, 100);
   textSize(48);
   textAlign(CENTER, CENTER);
-  text("Ganhaste!", width / 2, height / 4);
+  text("Ganhaste!", width / 2, height / 7);
 
   fill(255);
   textSize(30);
-  text(`Pontuação: ${counter}`, width / 2, height / 4 + 60);
+  text(`Pontuação: ${counter}`, width / 2, height / 7 + 60);
 
   displayLeaderboard();
 
@@ -912,10 +912,10 @@ function drawTryAgainButtons() {
   fill(255);
   textSize(26);
   textAlign(CENTER, CENTER);
-  text("Tentar outra vez?", width / 2, height - 100);
+  text("Tentar outra vez?", width / 2, height - 150);
 
-  let buttonY = height - 50;
-  let buttonSpacing = 100;
+  let buttonY = height - 90;
+  let buttonSpacing = 110;
 
   drawButton("Sim", width / 2 - buttonSpacing, buttonY, () => {
     playSoundSafe(buttonClickSound);
@@ -957,7 +957,7 @@ function drawConfirmClearScreen() {
   text("eliminar a pontuação?", width / 2, height / 3 + 40);
 
   let buttonY = height / 2 + 50;
-  let buttonSpacing = 100;
+  let buttonSpacing = 110;
 
   drawButton("Sim", width / 2 - buttonSpacing, buttonY, () => {
     playSoundSafe(buttonClickSound);
@@ -982,11 +982,11 @@ function displayLeaderboard() {
   fill(255, 215, 0);
   textSize(36);
   textAlign(CENTER, CENTER);
-  text("Top 3", width / 2, height / 2);
+  text("Top 3", width / 2, height / 3 + 20);
 
   fill(255);
   textSize(24);
-  let startY = height / 2 + 40;
+  let startY = height / 3 + 60;
 
   if (leaderboard.length === 0) {
     textAlign(CENTER, CENTER);
@@ -1154,70 +1154,83 @@ function playGame() {
 
   textSize(16);
   text("ESC para pausar", 10, height - 25);
-  text("Diga 'pausar' para pausar", 10, height - 45);
+  text("Diz 'pausar' para pausar", 10, height - 45);
 
   noStroke();
 }
 
 function handleHandDetection() {
   if (hands.length > 0) {
-    // Se houver mãos detectadas
-    for (let i = 0; i < hands.length; i++) {
-      let hand = hands[i]; // Obtém a mão atual
-      let handIndex = i; // Índice da mão
-      let isClosed = isHandClosed(hand); // Verifica se a mão está fechada
-      let palm = hand.keypoints[9]; // Obtém a posição da palma da mão
+    // Create arrays to track hands and their held fruits
+    let currentHands = new Set();
+    let fruitToRemove = [];
 
-      trails.push({ x: palm.x, y: palm.y, time: millis() }); // Adiciona um efeito de trilha (para vermos o percurso feito)
+    // First pass - update hand positions and mark active hands
+    for (let i = 0; i < hands.length; i++) {
+      let hand = hands[i];
+      let handIndex = i;
+      let palm = hand.keypoints[9];
+
+      currentHands.add(handIndex);
+      trails.push({ x: palm.x, y: palm.y, time: millis() });
+
+      let isClosed = isHandClosed(hand);
 
       if (isClosed) {
-        // Se a mão estiver fechada
-        let alreadyHolding = false;
-        for (let fruit of fruits) {
-          // Verifica se já está a segurar uma fruta
-          if (fruit.grabbed && fruit.grabbedBy === handIndex) {
-            alreadyHolding = true;
-            fruit.x = palm.x; // Mantém a fruta na palma
-            fruit.y = palm.y;
-            break;
-          }
-        }
+        // Check if this hand is already holding a fruit
+        let heldFruit = fruits.find(
+          (f) => f.grabbed && f.grabbedBy === handIndex
+        );
 
-        if (!alreadyHolding) {
-          // Se ainda não estiver a segurar nenhuma fruta
-          for (let fruit of fruits) {
-            if (
-              !fruit.grabbed &&
-              dist(palm.x, palm.y, fruit.x, fruit.y) < fruit.w
-            ) {
-              fruit.grabbed = true; // Marca a fruta como agarrada
-              fruit.grabbedBy = handIndex;
-              playSoundSafe(fruitGrabSound); // Toca o som de grab
-              break;
-            }
+        if (heldFruit) {
+          // Update held fruit position
+          heldFruit.x = palm.x;
+          heldFruit.y = palm.y;
+        } else {
+          // Try to grab a new fruit
+          let nearestFruit = fruits.find(
+            (f) => !f.grabbed && dist(palm.x, palm.y, f.x, f.y) < f.w
+          );
+
+          if (nearestFruit) {
+            nearestFruit.grabbed = true;
+            nearestFruit.grabbedBy = handIndex;
+            playSoundSafe(fruitGrabSound);
           }
         }
       } else {
-        // Se a mão estiver aberta (a soltar a fruta)
-        for (let fruit of fruits) {
-          if (fruit.grabbed && fruit.grabbedBy === handIndex) {
-            if (dist(fruit.x, fruit.y, basket.x, basket.y) < basket.w * 0.6) {
-              counter++;
-              playSoundSafe(fruitInBasketSound);
-              let fruitIndex = fruits.indexOf(fruit);
-              if (fruitIndex > -1) {
-                fruits.splice(fruitIndex, 1);
-              }
-            } else {
-              playSoundSafe(fruitDropSound); // Toca o som da fruta a cair
-              fruit.grabbed = false;
-              fruit.grabbedBy = null;
-            }
-            break;
+        // Handle releasing fruits
+        let releasedFruit = fruits.find(
+          (f) => f.grabbed && f.grabbedBy === handIndex
+        );
+        if (releasedFruit) {
+          if (
+            dist(releasedFruit.x, releasedFruit.y, basket.x, basket.y) <
+            basket.w * 0.6
+          ) {
+            counter++;
+            playSoundSafe(fruitInBasketSound);
+            fruitToRemove.push(releasedFruit);
+          } else {
+            playSoundSafe(fruitDropSound);
+            releasedFruit.grabbed = false;
+            releasedFruit.grabbedBy = null;
           }
         }
       }
     }
+
+    // Remove fruits that were successfully basketed
+    fruits = fruits.filter((f) => !fruitToRemove.includes(f));
+
+    // Release fruits held by hands that are no longer detected
+    fruits.forEach((fruit) => {
+      if (fruit.grabbed && !currentHands.has(fruit.grabbedBy)) {
+        fruit.grabbed = false;
+        fruit.grabbedBy = null;
+        playSoundSafe(fruitDropSound);
+      }
+    });
   }
 }
 
@@ -1232,17 +1245,17 @@ function drawPauseMenuScreen() {
   fill(255);
   textSize(40);
   textAlign(CENTER, CENTER);
-  text("Jogo Pausado", width / 2, height / 3);
+  text("Jogo Pausado", width / 2, height / 4);
 
   textSize(18);
   text(
-    "Diga 'voltar' para continuar ou 'sair' para sair",
+    "Diz 'voltar' para continuar ou 'sair' para sair",
     width / 2,
-    height / 3 + 50
+    height / 4 + 65
   );
 
-  let buttonY = height * 0.6;
-  let buttonSpacing = 80;
+  let buttonY = height * 0.55;
+  let buttonSpacing = 70;
 
   drawButton("Voltar", width / 2, buttonY, () => {
     playSoundSafe(pauseSound);
