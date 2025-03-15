@@ -25,6 +25,7 @@ let speechReady = false;
 let lastCommand = "";
 let commandRecognized = false;
 let commandFeedbackTimer = 0;
+let micEnabled = true;
 
 let bgImage;
 let logoImage;
@@ -110,12 +111,17 @@ function loadSettings() {
   if (localStorage.getItem("sfxVolume")) {
     sfxVolume = parseFloat(localStorage.getItem("sfxVolume"));
   }
+
+  if (localStorage.getItem("micEnabled") !== null) {
+    micEnabled = localStorage.getItem("micEnabled") === "true";
+  }
 }
 
 function saveSettings() {
   localStorage.setItem("difficulty", difficulty);
   localStorage.setItem("musicVolume", musicVolume);
   localStorage.setItem("sfxVolume", sfxVolume);
+  localStorage.setItem("micEnabled", micEnabled);
 }
 
 function updateDifficultySettings() {
@@ -227,8 +233,10 @@ function setup() {
     updateSoundVolumes();
   }
 
-  // Initialize speech recognition
-  initSpeechRecognition();
+  // Initialize speech recognition if enabled
+  if (micEnabled) {
+    initSpeechRecognition();
+  }
 
   setTimeout(() => {
     assetsLoaded = true;
@@ -263,6 +271,9 @@ function gotSpeech() {
 }
 
 function processVoiceCommand(command) {
+  // Only process commands if microphone is enabled
+  if (!micEnabled) return;
+
   // Only process these specific commands
   if (
     command === "pausar" ||
@@ -525,7 +536,9 @@ function drawMainMenu() {
     textSize(16);
     fill(255);
     textAlign(CENTER, TOP);
-    text("Diz 'jogar' para começar o jogo", width / 2, height - 25);
+    if (micEnabled) {
+      text("Diz 'jogar' para começar o jogo", width / 2, height - 25);
+    }
   }
 
   fill(180);
@@ -713,6 +726,8 @@ function drawOptionsScreen() {
   textSize(26);
   textAlign(CENTER, TOP);
   text("Dificuldade:", width / 2, 100);
+  text("Volume:", width / 2, 235);
+  text("Microfone:", width / 2 - 25, 380);
 
   let buttonY = 180;
   let buttonWidth = 120;
@@ -766,25 +781,30 @@ function drawOptionsScreen() {
     }
   );
 
-  textSize(26);
-  textAlign(CENTER, TOP);
-  text("Volume:", width / 2, 235);
-
   textSize(20);
-  text("Música:", width / 2, 280);
+  text("Música:", width / 3 - 20, 280);
 
-  let sliderX = width / 2;
+  let sliderX1 = width / 3 - 20;
+  let sliderX2 = width / 1.5 + 20;
   let sliderWidth = 200;
-  drawSlider(sliderX, 330, sliderWidth, musicVolume, (value) => {
+  drawSlider(sliderX1, 330, sliderWidth, musicVolume, (value) => {
     musicVolume = value;
     updateSoundVolumes();
   });
 
-  text("Efeitos:", width / 2, 360);
+  text("Efeitos:", width / 1.5 + 20, 280);
 
-  drawSlider(sliderX, 410, sliderWidth, sfxVolume, (value) => {
+  drawSlider(sliderX2, 330, sliderWidth, sfxVolume, (value) => {
     sfxVolume = value;
     updateSoundVolumes();
+  });
+
+  // Draw checkbox for microphone
+  drawCheckbox(width / 2 + 75, 390, micEnabled, (checked) => {
+    micEnabled = checked;
+    if (micEnabled && !speechReady) {
+      initSpeechRecognition();
+    }
   });
 }
 
@@ -835,6 +855,48 @@ function drawSlider(x, y, w, value, onChange) {
   ) {
     let newValue = constrain((mouseX - (x - w / 2)) / w, 0, 1);
     onChange(newValue);
+  }
+}
+
+function drawCheckbox(x, y, checked, onChange) {
+  const boxSize = 24;
+
+  // Draw the checkbox
+  push();
+  stroke(255);
+  strokeWeight(2);
+  if (checked) {
+    fill(0, 98, 38);
+  } else {
+    fill(50);
+  }
+  rect(x, y - boxSize / 2, boxSize, boxSize, 3);
+
+  // Draw checkmark
+  if (checked) {
+    stroke(255);
+    strokeWeight(3);
+    line(x + 5, y - 2, x + 10, y + 5);
+    line(x + 10, y + 5, x + boxSize - 5, y - 8);
+  }
+  pop();
+
+  // Check for mouse click
+  if (
+    mouseIsPressed &&
+    mouseX >= x &&
+    mouseX <= x + boxSize &&
+    mouseY >= y - boxSize / 2 &&
+    mouseY <= y + boxSize / 2
+  ) {
+    if (
+      !window.lastCheckboxClick ||
+      millis() - window.lastCheckboxClick > 300
+    ) {
+      window.lastCheckboxClick = millis();
+      playSoundSafe(buttonClickSound);
+      onChange(!checked);
+    }
   }
 }
 
@@ -973,7 +1035,7 @@ function drawConfirmClearScreen() {
 
 function clearLeaderboard() {
   localStorage.removeItem("leaderboardWithDiff");
-  //console.log("Classificação limpa.");
+  console.log("Classificação limpa.");
 }
 
 function displayLeaderboard() {
@@ -1154,7 +1216,11 @@ function playGame() {
 
   textSize(16);
   text("ESC para pausar", 10, height - 25);
-  text("Diz 'pausar' para pausar", 10, height - 45);
+
+  // Only show voice command hint if microphone is enabled
+  if (micEnabled) {
+    text("Diz 'pausar' para pausar", 10, height - 45);
+  }
 
   noStroke();
 }
@@ -1248,11 +1314,13 @@ function drawPauseMenuScreen() {
   text("Jogo Pausado", width / 2, height / 4);
 
   textSize(18);
-  text(
-    "Diz 'voltar' para continuar ou 'sair' para sair",
-    width / 2,
-    height / 4 + 65
-  );
+  if (micEnabled) {
+    text(
+      "Diz 'voltar' para continuar ou 'sair' para sair",
+      width / 2,
+      height / 4 + 65
+    );
+  }
 
   let buttonY = height * 0.55;
   let buttonSpacing = 70;
