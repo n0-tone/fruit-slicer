@@ -32,7 +32,14 @@ let logoImage;
 let upheavalFont;
 let backArrow;
 
-let cereja, kiwi, laranja, manga, melancia, morango, pera, basketImg;
+let cereja, kiwi, laranja, manga, melancia, morango, pera;
+
+let currentBasketImg,
+  basketStage0,
+  basketStage1,
+  basketStage2,
+  basketStage3,
+  basketStage4;
 
 let bgMusic;
 let fruitDropSound;
@@ -65,7 +72,12 @@ function preload() {
     morango = loadImage("assets/imgs/fruits/morango.png");
     pera = loadImage("assets/imgs/fruits/pera.png");
 
-    basketImg = loadImage("assets/imgs/basket.png");
+    basketImg = loadImage("assets/imgs/basket/basket-1.png");
+    basketStage0 = loadImage("assets/imgs/basket/basket-0.png");
+    basketStage1 = loadImage("assets/imgs/basket/basket-1.png");
+    basketStage2 = loadImage("assets/imgs/basket/basket-2.png");
+    basketStage3 = loadImage("assets/imgs/basket/basket-3.png");
+    basketStage4 = loadImage("assets/imgs/basket/basket-4.png");
 
     if (typeof p5.prototype.loadSound === "function") {
       bgMusic = loadSound(
@@ -1396,11 +1408,11 @@ function drawFruits() {
   imageMode(CENTER);
   for (let fruit of fruits) {
     if (fruit.grabbed) {
-      fill(255, 255, 0, 150); 
+      fill(255, 255, 0, 150);
       noStroke();
-      ellipse(fruit.x, fruit.y, fruit.w * 1.8, fruit.h * 1.8); 
+      ellipse(fruit.x, fruit.y, fruit.w * 1.8, fruit.h * 1.8);
     }
-    
+
     image(fruit.img, fruit.x, fruit.y, fruit.w * 1.5, fruit.h * 1.5);
   }
   imageMode(CORNER);
@@ -1408,14 +1420,38 @@ function drawFruits() {
 
 function drawBasket() {
   imageMode(CENTER);
+
+  // Get current basket stage image based on progress
+  currentBasketImg = getBasketStageImage();
+
   image(
-    basketImg,
+    currentBasketImg,
     basket.x,
     basket.y + basket.h / 2,
     basket.w * 1.2,
     basket.h * 1.5
   );
   imageMode(CORNER);
+}
+
+function getBasketStageImage() {
+  // Calculate the progress percentage towards the quota
+  let progressPercentage = (counter / quota) * 100;
+
+  // Determine which stage to display based on the progress
+  if (progressPercentage >= 100) {
+    return basketStage4; // Completely full - quota reached
+  } else if (progressPercentage >= 75) {
+    return basketStage3; // 75-99% full
+  } else if (progressPercentage >= 50) {
+    return basketStage2; // 50-74% full
+  } else if (progressPercentage >= 25) {
+    return basketStage1; // 25-49% full
+  } else if (progressPercentage > 0) {
+    return basketStage1; // 1-24% full (using stage1 for minimum fill)
+  } else {
+    return basketStage0; // Empty - no fruits collected yet
+  }
 }
 
 function updateTrails() {
