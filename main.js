@@ -1118,7 +1118,7 @@ function getLeaderboard() {
 
 function resetGame() {
   fruits = [];
-  timer = 120;
+  timer = 60;
   counter = 0;
   isPaused = false;
 
@@ -1211,7 +1211,7 @@ function playGame() {
   strokeWeight(2);
   stroke(255);
   textAlign(LEFT, TOP);
-  text(`Tempo: ${nf(minutes, 1)}m ${nf(seconds, 2)}s`, 10, 5);
+  text(`Tempo: ${nf(seconds, 2)}  `, 10, 5);
   text("Fruta Apanhada: " + counter + "/" + quota, 10, 35);
 
   textSize(16);
@@ -1395,6 +1395,12 @@ function updateFruits() {
 function drawFruits() {
   imageMode(CENTER);
   for (let fruit of fruits) {
+    if (fruit.grabbed) {
+      fill(255, 255, 0, 150); 
+      noStroke();
+      ellipse(fruit.x, fruit.y, fruit.w * 1.8, fruit.h * 1.8); 
+    }
+    
     image(fruit.img, fruit.x, fruit.y, fruit.w * 1.5, fruit.h * 1.5);
   }
   imageMode(CORNER);
