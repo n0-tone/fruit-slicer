@@ -245,21 +245,25 @@ function setup() {
     updateSoundVolumes();
   }
 
-  // Initialize speech recognition if enabled
+  // Inicializa o reconhecimento de voz se estiver ativado
   if (micEnabled) {
     initSpeechRecognition();
   }
 
   setTimeout(() => {
     assetsLoaded = true;
-    gameState = "menu";
-    if (soundsLoaded && !isSoundPlaying(bgMusic)) {
-      loopSoundSafe(bgMusic);
+    gameState = "playing"; // Alterado de "menu" para "playing"
+    resetGame(); // Garante que o jogo inicie corretamente
+    if (soundsLoaded && !isSoundPlaying(gameMusic)) {
+      loopSoundSafe(gameMusic);
     }
   }, 2000);
 
   basket = { x: width / 2, y: height - 60, w: 120, h: 60 };
 }
+
+
+ 
 
 function initSpeechRecognition() {
   try {
@@ -919,20 +923,6 @@ function drawGameOverScreen() {
 
   image(backArrow, 20, 20, 40, 40);
 
-  if (!window.buttons) window.buttons = [];
-  window.buttons = [
-    {
-      x1: 20,
-      y1: 20,
-      x2: 60,
-      y2: 60,
-      onClick: () => {
-        playSoundSafe(buttonClickSound);
-        gameState = "menu";
-      },
-    },
-  ];
-
   fill(255, 100, 100);
   textSize(48);
   textAlign(CENTER, CENTER);
@@ -943,8 +933,18 @@ function drawGameOverScreen() {
   text(`Pontuação: ${counter}/${quota}`, width / 2, height / 7 + 60);
 
   displayLeaderboard();
-
   drawTryAgainButtons();
+
+  // 🔥 **Verificação das 2 mãos para recomeçar automaticamente**
+  if (hands.length >= 2) {
+    let validHands = hands.filter(hand => hand.keypoints.length > 9);
+    if (validHands.length >= 2) {
+      playSoundSafe(buttonClickSound);
+      gameState = "playing";
+      resetGame();
+      return; // Evita processar mais verificações
+    }
+  }
 }
 
 function drawGameWinScreen() {
@@ -953,20 +953,6 @@ function drawGameWinScreen() {
   noTint();
 
   image(backArrow, 20, 20, 40, 40);
-
-  if (!window.buttons) window.buttons = [];
-  window.buttons = [
-    {
-      x1: 20,
-      y1: 20,
-      x2: 60,
-      y2: 60,
-      onClick: () => {
-        playSoundSafe(buttonClickSound);
-        gameState = "menu";
-      },
-    },
-  ];
 
   fill(100, 255, 100);
   textSize(48);
@@ -978,10 +964,19 @@ function drawGameWinScreen() {
   text(`Pontuação: ${counter}`, width / 2, height / 7 + 60);
 
   displayLeaderboard();
-
   drawTryAgainButtons();
-}
 
+  // 🔥 **Verificação das 2 mãos para recomeçar automaticamente**
+  if (hands.length >= 2) {
+    let validHands = hands.filter(hand => hand.keypoints.length > 9);
+    if (validHands.length >= 2) {
+      playSoundSafe(buttonClickSound);
+      gameState = "playing";
+      resetGame();
+      return; // Evita processar mais verificações
+    }
+  }
+}
 function drawTryAgainButtons() {
   fill(255);
   textSize(26);
@@ -1130,7 +1125,7 @@ function getLeaderboard() {
 
 function resetGame() {
   fruits = [];
-  timer = 60;
+  timer = 5;
   counter = 0;
   isPaused = false;
 
@@ -1238,16 +1233,30 @@ function playGame() {
 }
 
 function handleHandDetection() {
+  // Se o jogo estiver pausado e duas mãos forem detectadas, retoma
+  if (gameState === "pauseMenu" && hands.length >= 2) {
+    let validHands = hands.filter(hand => hand.keypoints.length > 9); // Garante que ambas tenham keypoints válidos
+    if (validHands.length >= 2) {
+      playSoundSafe(pauseSound);
+      gameState = "playing";
+      isPaused = false;
+      if (soundsLoaded && !gameMusic.isPlaying()) {
+        gameMusic.loop();
+      }
+      return; // Evita processar mais lógica após retomar o jogo
+    }
+  }
+
   if (hands.length > 0) {
-    // Create arrays to track hands and their held fruits
     let currentHands = new Set();
     let fruitToRemove = [];
 
-    // First pass - update hand positions and mark active hands
     for (let i = 0; i < hands.length; i++) {
       let hand = hands[i];
       let handIndex = i;
       let palm = hand.keypoints[9];
+
+      if (!palm) continue; // Evita erro se a mão estiver incompleta
 
       currentHands.add(handIndex);
       trails.push({ x: palm.x, y: palm.y, time: millis() });
@@ -1255,21 +1264,12 @@ function handleHandDetection() {
       let isClosed = isHandClosed(hand);
 
       if (isClosed) {
-        // Check if this hand is already holding a fruit
-        let heldFruit = fruits.find(
-          (f) => f.grabbed && f.grabbedBy === handIndex
-        );
-
+        let heldFruit = fruits.find((f) => f.grabbed && f.grabbedBy === handIndex);
         if (heldFruit) {
-          // Update held fruit position
           heldFruit.x = palm.x;
           heldFruit.y = palm.y;
         } else {
-          // Try to grab a new fruit
-          let nearestFruit = fruits.find(
-            (f) => !f.grabbed && dist(palm.x, palm.y, f.x, f.y) < f.w
-          );
-
+          let nearestFruit = fruits.find((f) => !f.grabbed && dist(palm.x, palm.y, f.x, f.y) < f.w);
           if (nearestFruit) {
             nearestFruit.grabbed = true;
             nearestFruit.grabbedBy = handIndex;
@@ -1277,15 +1277,9 @@ function handleHandDetection() {
           }
         }
       } else {
-        // Handle releasing fruits
-        let releasedFruit = fruits.find(
-          (f) => f.grabbed && f.grabbedBy === handIndex
-        );
+        let releasedFruit = fruits.find((f) => f.grabbed && f.grabbedBy === handIndex);
         if (releasedFruit) {
-          if (
-            dist(releasedFruit.x, releasedFruit.y, basket.x, basket.y) <
-            basket.w * 0.6
-          ) {
+          if (dist(releasedFruit.x, releasedFruit.y, basket.x, basket.y) < basket.w * 0.6) {
             counter++;
             playSoundSafe(fruitInBasketSound);
             fruitToRemove.push(releasedFruit);
@@ -1298,10 +1292,8 @@ function handleHandDetection() {
       }
     }
 
-    // Remove fruits that were successfully basketed
     fruits = fruits.filter((f) => !fruitToRemove.includes(f));
 
-    // Release fruits held by hands that are no longer detected
     fruits.forEach((fruit) => {
       if (fruit.grabbed && !currentHands.has(fruit.grabbedBy)) {
         fruit.grabbed = false;
@@ -1312,8 +1304,10 @@ function handleHandDetection() {
   }
 }
 
+
+
 function drawPauseMenuScreen() {
-  image(video, 0, 0);
+  image(video, 0, 0); // Mostra a câmera enquanto o jogo está pausado
   drawFruits();
   drawBasket();
 
@@ -1328,10 +1322,24 @@ function drawPauseMenuScreen() {
   textSize(18);
   if (micEnabled) {
     text(
-      "Diz 'voltar' para continuar ou 'sair' para sair",
+      "Diz 'voltar' ou coloca 2 mãos na câmera para continuar",
       width / 2,
       height / 4 + 65
     );
+  }
+
+  // 🔥 **Verificação das 2 mãos para retomar o jogo**
+  if (hands.length >= 2) {
+    let validHands = hands.filter(hand => hand.keypoints.length > 9);
+    if (validHands.length >= 2) {
+      playSoundSafe(pauseSound);
+      gameState = "playing";
+      isPaused = false;
+      if (soundsLoaded && !gameMusic.isPlaying()) {
+        gameMusic.loop();
+      }
+      return; // Sai da função para evitar mais verificações
+    }
   }
 
   let buttonY = height * 0.55;
@@ -1358,6 +1366,7 @@ function drawPauseMenuScreen() {
     drawTrails();
   }
 }
+
 
 function isHandClosed(hand) {
   let fingersClosed = 0;
