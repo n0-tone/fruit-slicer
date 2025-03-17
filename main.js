@@ -46,6 +46,9 @@ let gameWinSound;
 let musicVolume = 0.5;
 let sfxVolume = 0.5;
 
+let handHoverTimers = {}; // Tracks how long hands hover over buttons
+let handButtonThreshold = 2000; // 2 seconds threshold for activation
+
 function preload() {
   handPose = ml5.handPose({ flipped: true });
 
@@ -63,7 +66,6 @@ function preload() {
     morango = loadImage("assets/imgs/fruits/morango.png");
     pera = loadImage("assets/imgs/fruits/pera.png");
 
-    basketImg = loadImage("assets/imgs/basket/basket-1.png");
     basketStage0 = loadImage("assets/imgs/basket/basket-0.png");
     basketStage1 = loadImage("assets/imgs/basket/basket-1.png");
     basketStage2 = loadImage("assets/imgs/basket/basket-2.png");
@@ -260,6 +262,12 @@ function draw() {
       drawPauseMenuScreen();
       break;
   }
+
+  // Process hand detection data for all screens
+  if (hands.length > 0) {
+    // Update trails for all states
+    updateTrails();
+  }
 }
 
 function stopAllSounds() {
@@ -305,11 +313,32 @@ function drawMainMenu() {
   pop();
 
   let buttonY = height * 0.5;
-  drawButton("Jogar", width / 2, buttonY, () => {
-    playSoundSafe(buttonClickSound);
-    gameState = "playing";
-    resetGame();
-  });
+
+  // Track the play button coordinates for hand detection
+  const playButtonInfo = {
+    x: width / 2,
+    y: buttonY,
+    width: 200,
+    height: 50,
+    action: () => {
+      playSoundSafe(buttonClickSound);
+      gameState = "playing";
+      resetGame();
+    },
+  };
+
+  drawButton(
+    "Jogar",
+    playButtonInfo.x,
+    playButtonInfo.y,
+    playButtonInfo.action
+  );
+
+  // Process hand detection for the menu
+  if (hands.length > 0) {
+    handleMenuHandDetection([playButtonInfo]);
+    drawHandTrails();
+  }
 
   textSize(20);
   fill(255);
@@ -455,11 +484,31 @@ function drawGameEndScreen() {
   textSize(40);
   text(highScore, width / 2, height / 2 + 60);
 
-  drawButton("Reiniciar", width / 2, height * 0.8, () => {
-    playSoundSafe(buttonClickSound);
-    gameState = "playing";
-    resetGame();
-  });
+  // Track restart button coordinates for hand detection
+  const restartButtonInfo = {
+    x: width / 2,
+    y: height * 0.8,
+    width: 200,
+    height: 50,
+    action: () => {
+      playSoundSafe(buttonClickSound);
+      gameState = "playing";
+      resetGame();
+    },
+  };
+
+  drawButton(
+    "Reiniciar",
+    restartButtonInfo.x,
+    restartButtonInfo.y,
+    restartButtonInfo.action
+  );
+
+  // Process hand detection for the game end screen
+  if (hands.length > 0) {
+    handleMenuHandDetection([restartButtonInfo]);
+    drawHandTrails();
+  }
 }
 
 function resetGame() {
@@ -533,6 +582,7 @@ function playGame() {
   image(video, 0, 0);
 
   if (!isPaused) {
+    updateDifficultyByTime();
     updateFruits();
   }
 
@@ -545,6 +595,8 @@ function playGame() {
     handleHandDetection();
   }
 
+  // Reset drawing state before drawing UI text
+  push();
   let seconds = timer % 60;
 
   fill(1, 50, 32);
@@ -554,8 +606,31 @@ function playGame() {
   textAlign(LEFT, TOP);
   text(`Tempo: ${nf(seconds, 2)}  `, 10, 5);
   text("Fruta Apanhada: " + counter + "/" + quota, 10, 35);
+  pop();
+}
 
-  noStroke();
+function updateDifficultyByTime() {
+  // Initial values (easy)
+  const minSpeed = 1.2;
+  const maxSpeed = 3;
+  const minFrequency = 85;
+  const maxFrequency = 35;
+  if (timer >= 49) {
+    fruitSpeed = minSpeed;
+    fruitFrequency = minFrequency;
+  } else if (timer <= 10) {
+    fruitSpeed = maxSpeed;
+    fruitFrequency = maxFrequency;
+  } else {
+    const timeRange = 49 - 10;
+    const timePosition = 49 - timer;
+    const difficultyProgress = timePosition / timeRange;
+
+    fruitSpeed = minSpeed + difficultyProgress * (maxSpeed - minSpeed);
+    fruitFrequency = Math.floor(
+      minFrequency - difficultyProgress * (minFrequency - maxFrequency)
+    );
+  }
 }
 
 function handleHandDetection() {
@@ -569,7 +644,7 @@ function handleHandDetection() {
       let palm = hand.keypoints[9];
 
       currentHands.add(handIndex);
-      trails.push({ x: palm.x, y: palm.y, time: millis() });
+      trails.push({ x: palm.x, y: palm.y, time: millis(), isMenuTrail: false });
 
       let isClosed = isHandClosed(hand);
 
@@ -597,9 +672,10 @@ function handleHandDetection() {
           (f) => f.grabbed && f.grabbedBy === handIndex
         );
         if (releasedFruit) {
+          // Increase basket hitbox by making the detection radius larger
           if (
             dist(releasedFruit.x, releasedFruit.y, basket.x, basket.y) <
-            basket.w * 0.6
+            basket.w * 0.8 // Increased from 0.6 to 0.8
           ) {
             counter++;
             playSoundSafe(fruitInBasketSound);
@@ -764,13 +840,116 @@ function updateTrails() {
   trails = trails.filter((t) => millis() - t.time < 500);
 }
 
-function drawTrails() {
-  noFill();
+function drawHandTrails() {
   for (let i = 0; i < trails.length; i++) {
-    let hue = (frameCount + i * 10) % 360;
-    let alpha = map(millis() - trails[i].time, 0, 500, 200, 0);
-    stroke(hue, 100, 100, alpha);
-    strokeWeight(10);
+    push(); // Save the current drawing state
+    noFill();
+
+    if (trails[i].isMenuTrail) {
+      // Red trails for menu/gameEnd screens
+      let alpha = map(millis() - trails[i].time, 0, 500, 255, 0);
+      stroke(255, 0, 0, alpha);
+      strokeWeight(15);
+    } else {
+      // Normal colorful trails for gameplay
+      let hue = (frameCount + i * 10) % 360;
+      let alpha = map(millis() - trails[i].time, 0, 500, 200, 0);
+      stroke(hue, 100, 100, alpha);
+      strokeWeight(10);
+    }
+
     point(trails[i].x, trails[i].y);
+    pop(); // Restore the drawing state
   }
+}
+
+// Replace the original drawTrails function
+function drawTrails() {
+  if (gameState === "playing" || gameState === "pauseMenu") {
+    drawHandTrails();
+  }
+}
+
+function handleMenuHandDetection(buttonInfos) {
+  const currentTime = millis();
+
+  for (let i = 0; i < hands.length; i++) {
+    let hand = hands[i];
+    let palmX = hand.keypoints[9].x;
+    let palmY = hand.keypoints[9].y;
+
+    // Add larger, red trails for menu/gameEnd screens
+    trails.push({
+      x: palmX,
+      y: palmY,
+      time: currentTime,
+      isMenuTrail: true,
+    });
+
+    // Check if palm is over any button
+    for (let button of buttonInfos) {
+      if (isPointInButton(palmX, palmY, button)) {
+        // Initialize timer if not yet tracking this hand+button combo
+        const key = `hand_${i}_button_${button.x}_${button.y}`;
+
+        if (!handHoverTimers[key]) {
+          handHoverTimers[key] = {
+            startTime: currentTime,
+            progress: 0,
+          };
+        } else {
+          // Update progress
+          handHoverTimers[key].progress =
+            currentTime - handHoverTimers[key].startTime;
+
+          // If threshold reached, activate button
+          if (handHoverTimers[key].progress >= handButtonThreshold) {
+            button.action();
+            handHoverTimers = {}; // Reset all timers
+            return;
+          }
+
+          // Draw progress indicator
+          drawButtonActivationProgress(
+            button,
+            handHoverTimers[key].progress / handButtonThreshold
+          );
+        }
+      } else {
+        // Remove timer if hand moved away from button
+        const key = `hand_${i}_button_${button.x}_${button.y}`;
+        if (handHoverTimers[key]) {
+          delete handHoverTimers[key];
+        }
+      }
+    }
+  }
+}
+
+function isPointInButton(x, y, button) {
+  return (
+    x > button.x - button.width / 2 &&
+    x < button.x + button.width / 2 &&
+    y > button.y - button.height / 2 &&
+    y < button.y + button.height / 2
+  );
+}
+
+function drawButtonActivationProgress(button, progress) {
+  push(); // Save current drawing state
+  noFill();
+  stroke(255, 0, 0);
+  strokeWeight(3);
+
+  // Draw an arc showing progress (0 to 2*PI)
+  const angle = progress * TWO_PI;
+  arc(
+    button.x,
+    button.y,
+    button.width + 20,
+    button.height + 20,
+    -HALF_PI,
+    -HALF_PI + angle
+  );
+  pop(); // Restore drawing state
 }
